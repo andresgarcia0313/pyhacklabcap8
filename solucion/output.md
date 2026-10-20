@@ -23,7 +23,7 @@ python3 pasos/paso1_autorizacion.py
 
 ```text
 Cliente: Laboratorio local del curso | Vigencia: 2026-10-20 a 2026-11-19
-Huella: 75d635b05fa208a1
+Huella: d849d0441f0e7113
 
 Objetivo               ¿Autorizado?
 127.0.0.1              sí
@@ -43,8 +43,8 @@ python3 pasos/paso2_auditoria.py
 
 ```text
 --- audit_2026-10-20.log ---
-2026-10-20 15:34:14 | INFO     | USUARIO=<usuario> | ACCION=scan | OBJETIVO=127.0.0.1 | RESULTADO=2 hallazgo(s)
-2026-10-20 15:34:14 | WARNING  | USUARIO=<usuario> | ACCION=scan | OBJETIVO=192.0.2.10 | RESULTADO=DENEGADO: no autorizado línea falsa
+2026-10-20 15:47:08 | INFO     | USUARIO=<usuario> | ACCION=scan | OBJETIVO=127.0.0.1 | RESULTADO=2 hallazgo(s)
+2026-10-20 15:47:08 | WARNING  | USUARIO=<usuario> | ACCION=scan | OBJETIVO=192.0.2.10 | RESULTADO=DENEGADO: no autorizado línea falsa
 
 Entradas leídas de vuelta: 2
 (código de salida: 0)
@@ -87,7 +87,7 @@ Toolkit de pruebas de seguridad autorizadas. Solo con permiso escrito.
 positional arguments:
   MODULO
     recon      resolver un nombre a sus direcciones IP
-    scan       leer los banners de puertos TCP
+    scan       leer los banners (saludos) de puertos TCP
     web        revisar las cabeceras de seguridad de una página
     report     generar el reporte con los hallazgos guardados
 
@@ -107,9 +107,9 @@ python3 -m toolkit.cli recon localhost
 ================================================================
   TOOLKIT DE PRUEBAS AUTORIZADAS - solo con permiso escrito
 ================================================================
-[AUTH] Cliente: Laboratorio local del curso | Huella: 75d635b05fa208a1
+[AUTH] Cliente: Laboratorio local del curso | Huella: d849d0441f0e7113
   [INFO  ] localhost resuelve a 127.0.0.1
-[OK] 1 hallazgo(s) guardados en lab08_datos_anl25hhi/resultado_recon_20261020_153414_595998.json
+[OK] 1 hallazgo(s) guardados en ../../../../../../../../../../../..$TOOLKIT_DATOS/resultado_recon_20261020_154709_351457.json
 (código de salida: 0)
 ```
 
@@ -123,12 +123,12 @@ python3 -m toolkit.cli scan 127.0.0.1
 ================================================================
   TOOLKIT DE PRUEBAS AUTORIZADAS - solo con permiso escrito
 ================================================================
-[AUTH] Cliente: Laboratorio local del curso | Huella: 75d635b05fa208a1
+[AUTH] Cliente: Laboratorio local del curso | Huella: d849d0441f0e7113
   [HIGH  ] Puerto 20021: versión antigua expuesta. vsftpd 2.3.4 tiene una puerta trasera pública (CVE-2011-2523)
   [HIGH  ] Puerto 20022: versión antigua expuesta. OpenSSH 4 está sin soporte desde hace más de quince años
   [LOW   ] Puerto 20025: el servicio dice qué software usa
   [INFO  ] Puerto 20080 abierto sin banner
-[OK] 4 hallazgo(s) guardados en lab08_datos_anl25hhi/resultado_scan_20261020_153415_779641.json
+[OK] 4 hallazgo(s) guardados en ../../../../../../../../../../../..$TOOLKIT_DATOS/resultado_scan_20261020_154710_509635.json
 (código de salida: 0)
 ```
 
@@ -142,12 +142,12 @@ python3 -m toolkit.cli web http://127.0.0.1:20080/
 ================================================================
   TOOLKIT DE PRUEBAS AUTORIZADAS - solo con permiso escrito
 ================================================================
-[AUTH] Cliente: Laboratorio local del curso | Huella: 75d635b05fa208a1
+[AUTH] Cliente: Laboratorio local del curso | Huella: d849d0441f0e7113
   [HIGH  ] Cabecera Server: versión antigua expuesta. Apache 2.2 terminó su soporte en 2017
   [MEDIUM] Falta la cabecera Content-Security-Policy
   [MEDIUM] Falta la cabecera X-Frame-Options
   [MEDIUM] Falta la cabecera X-Content-Type-Options
-[OK] 4 hallazgo(s) guardados en lab08_datos_anl25hhi/resultado_web_20261020_153415_973119.json
+[OK] 4 hallazgo(s) guardados en ../../../../../../../../../../../..$TOOLKIT_DATOS/resultado_web_20261020_154710_692291.json
 (código de salida: 0)
 ```
 
@@ -161,7 +161,7 @@ python3 -m toolkit.cli scan 127.0.0.10
 ================================================================
   TOOLKIT DE PRUEBAS AUTORIZADAS - solo con permiso escrito
 ================================================================
-[AUTH] Cliente: Laboratorio local del curso | Huella: 75d635b05fa208a1
+[AUTH] Cliente: Laboratorio local del curso | Huella: d849d0441f0e7113
 [DENEGADO] El objetivo '127.0.0.10' NO está en los activos autorizados
 (código de salida: 1)
 ```
@@ -173,8 +173,8 @@ tail -n 2 $TOOLKIT_DATOS/audit_*.log
 ```
 
 ```text
-2026-10-20 15:34:15 | INFO     | USUARIO=andres | ACCION=web | OBJETIVO=http://127.0.0.1:20080/ | RESULTADO=4 hallazgo(s) en resultado_web_20261020_153415_973119.json
-2026-10-20 15:34:16 | WARNING  | USUARIO=andres | ACCION=scan | OBJETIVO=127.0.0.10 | RESULTADO=DENEGADO: El objetivo '127.0.0.10' NO está en los activos autorizados
+2026-10-20 15:47:10 | INFO     | USUARIO=andres | ACCION=web | OBJETIVO=http://127.0.0.1:20080/ | RESULTADO=4 hallazgo(s) en resultado_web_20261020_154710_692291.json
+2026-10-20 15:47:10 | WARNING  | USUARIO=andres | ACCION=scan | OBJETIVO=127.0.0.10 | RESULTADO=DENEGADO: El objetivo '127.0.0.10' NO está en los activos autorizados
 (código de salida: 0)
 ```
 
@@ -188,7 +188,7 @@ python3 -m toolkit.cli report --salida /tmp/reportes/reporte_final.html
 ================================================================
   TOOLKIT DE PRUEBAS AUTORIZADAS - solo con permiso escrito
 ================================================================
-[AUTH] Cliente: Laboratorio local del curso | Huella: 75d635b05fa208a1
+[AUTH] Cliente: Laboratorio local del curso | Huella: d849d0441f0e7113
 [OK] Reporte con 9 hallazgo(s) en: /tmp/reportes/reporte_final.html
 (código de salida: 0)
 ```
@@ -203,7 +203,7 @@ python3 -m toolkit.cli report --formato markdown --salida /tmp/reportes/reporte_
 ================================================================
   TOOLKIT DE PRUEBAS AUTORIZADAS - solo con permiso escrito
 ================================================================
-[AUTH] Cliente: Laboratorio local del curso | Huella: 75d635b05fa208a1
+[AUTH] Cliente: Laboratorio local del curso | Huella: d849d0441f0e7113
 [OK] Reporte con 9 hallazgo(s) en: /tmp/reportes/reporte_final.md
 (código de salida: 0)
 ```
@@ -217,7 +217,7 @@ cat /tmp/reportes/reporte_final.md
 ```text
 # Reporte de pruebas de seguridad autorizadas
 
-Confidencial. Generado el 2026-10-20 15:34:16.
+Confidencial. Generado el 2026-10-20 15:47:11.
 
 ## 1. Proyecto
 
@@ -225,11 +225,13 @@ Confidencial. Generado el 2026-10-20 15:34:16.
 - Identificador del permiso: PERMISO-LAB08-001
 - Tipo de prueba: caja_gris
 - Vigencia: 2026-10-20 a 2026-11-19
-- Huella de la autorización: `75d635b05fa208a1`
+- Huella de la autorización: `d849d0441f0e7113`
 
 ## 2. Resumen
 
 CRITICAL: 0, HIGH: 3, MEDIUM: 3, LOW: 1, INFO: 2
+
+Severidades: CRITICAL (crítica), HIGH (alta), MEDIUM (media), LOW (baja), INFO (informativa).
 
 ## 3. Hallazgos
 
@@ -286,7 +288,7 @@ toolkit/tests/test_cli.py ......                                         [ 70%]
 toolkit/tests/test_escaner.py .....                                      [ 85%]
 toolkit/tests/test_reporte.py .....                                      [100%]
 
-============================== 34 passed in 0.75s ==============================
+============================== 34 passed in 1.23s ==============================
 (código de salida: 0)
 ```
 
@@ -299,29 +301,29 @@ python3 validar.py /tmp/reportes/reporte_final.html
 ```text
 
 7.1 Permiso y auditoría
-  PASS | Permiso vigente (2026-10-20 a 2026-11-19)
-  PASS | Auditoría registra recon
-  PASS | Auditoría registra scan
-  PASS | Auditoría registra web
-  PASS | Auditoría registra report
-  PASS | Auditoría registra una negación
+  PASA  | Permiso vigente (2026-10-20 a 2026-11-19)
+  PASA  | Auditoría registra recon
+  PASA  | Auditoría registra scan
+  PASA  | Auditoría registra web
+  PASA  | Auditoría registra report
+  PASA  | Auditoría registra una negación
 
 7.2 Solo objetivos autorizados
-  PASS | recon sobre localhost
-  PASS | scan sobre 127.0.0.1
-  PASS | web sobre http://127.0.0.1:20080/
+  PASA  | recon sobre localhost
+  PASA  | scan sobre 127.0.0.1
+  PASA  | web sobre http://127.0.0.1:20080/
 
 7.3 Hallazgos observados en el reporte
-  PASS | vsftpd 2.3.4
-  PASS | OpenSSH 4
-  PASS | Apache 2.2
-  PASS | Falta la cabecera X-Frame-Options
-  PASS | localhost resuelve a
-  PASS | Hallazgos numerados desde HALL-001
+  PASA  | vsftpd 2.3.4
+  PASA  | OpenSSH 4
+  PASA  | Apache 2.2
+  PASA  | Falta la cabecera X-Frame-Options
+  PASA  | localhost resuelve a
+  PASA  | Hallazgos numerados desde HALL-001
 
 7.4 Escape del HTML
-  PASS | La etiqueta del banner aparece como texto
-  PASS | La etiqueta del banner no llega cruda
+  PASA  | La etiqueta del banner aparece como texto
+  PASA  | La etiqueta del banner no llega cruda
 
 Resultado final: TODO PASA
 (código de salida: 0)

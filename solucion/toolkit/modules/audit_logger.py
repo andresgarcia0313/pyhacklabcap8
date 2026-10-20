@@ -5,14 +5,24 @@ Piense en la minuta de la portería de un edificio: quién entró, a qué aparta
 a qué hora y qué pasó. La auditoría es esa minuta: QUIÉN hizo QUÉ, CONTRA QUÉ
 objetivo, CUÁNDO y con QUÉ resultado. También queda escrito lo que se negó.
 
+Cada línea lleva un NIVEL: INFO (información, todo normal), WARNING (advertencia,
+por ejemplo algo negado) o ERROR (error, algo falló).
+
 Todo se guarda en toolkit/datos/. Esa ruta se calcula desde la ubicación de ESTE
 archivo, no desde la carpeta en la que esté parada la terminal: ejecute el toolkit
 desde donde lo ejecute, los datos quedan en el mismo lugar. La variable de entorno
 TOOLKIT_DATOS cambia esa carpeta; las pruebas la usan para no mezclar sus datos con los suyos.
 
 Archivos que se crean:
-  datos/audit_AAAA-MM-DD.log  una línea por acción, un archivo por día
-  datos/resultado_*.json      los hallazgos de cada módulo, que luego lee el reporte
+  toolkit/datos/audit_AAAA-MM-DD.log  una línea por acción, un archivo por día
+  toolkit/datos/resultado_*.json      los hallazgos de cada módulo, que luego lee el reporte
+
+Para volver a leer el registro se usa una EXPRESIÓN REGULAR: un patrón que describe
+cómo es una línea. Símbolos de PATRON:
+  ^ y $   inicio y fin de la línea         \\S+  uno o más caracteres que no son espacio
+  \\w+     una o más letras o dígitos       \\s*  cero o más espacios
+  \\|      una barra | literal              .*   cualquier cosa, hasta el final
+  ( )     GRUPO: la parte que se guarda; m[1] es el primer grupo, m[2] el segundo...
 """
 import datetime
 import getpass            # getuser() dice qué usuario del sistema ejecuta el programa
@@ -24,8 +34,8 @@ from pathlib import Path
 
 PAQUETE = Path(__file__).resolve().parents[1]  # __file__ = este archivo; parents[1] sube a toolkit/
 FORMATO = "%(asctime)s | %(levelname)-8s | %(message)s"  # fecha | nivel | mensaje
-PATRON = re.compile(r"^(\S+ \S+) \| (\w+)\s*\| USUARIO=(\S+) \| ACCION=(\S+) \| "  # cada ( ) captura
-                    r"OBJETIVO=(\S+) \| RESULTADO=(.*)$")  # un dato de la línea
+PATRON = re.compile(r"^(\S+ \S+) \| (\w+)\s*\| USUARIO=(\S+) \| ACCION=(\S+) \| "  # la r antes de las comillas:
+                    r"OBJETIVO=(\S+) \| RESULTADO=(.*)$")  # Python no toca las barras \ (texto crudo)
 
 
 def carpeta_datos() -> Path:
@@ -43,7 +53,7 @@ def configurar_logger() -> logging.Logger:
         manejador.close()  # cierra el archivo anterior
     logger.setLevel(logging.INFO)  # guarda INFO, WARNING y ERROR
     logger.propagate = False  # no repite los mensajes en la consola
-    nombre = f"audit_{datetime.date.today().isoformat()}.log"  # audit_2026-10-20.log
+    nombre = f"audit_{datetime.date.today().isoformat()}.log"  # f-string: {...} se reemplaza por la fecha
     archivo = logging.FileHandler(carpeta_datos() / nombre, encoding="utf-8")  # el operador / une rutas
     archivo.setFormatter(logging.Formatter(FORMATO, datefmt="%Y-%m-%d %H:%M:%S"))
     logger.addHandler(archivo)
@@ -89,4 +99,4 @@ def leer_resultados() -> list[dict]:
         return archivo.name.split("_", 2)[2]  # "resultado_scan_20261020_..." -> "20261020_..."
 
     archivos = sorted(carpeta_datos().glob("resultado_*.json"), key=fecha_del_nombre)  # key: orden por fecha
-    return [json.loads(a.read_text(encoding="utf-8")) for a in archivos]  # cada archivo -> diccionario
+    return [json.loads(a.read_text(encoding="utf-8")) for a in archivos]  # "por cada archivo a, su contenido"

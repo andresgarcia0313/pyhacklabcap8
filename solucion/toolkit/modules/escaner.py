@@ -2,18 +2,25 @@
 escaner.py - Los tres módulos de prueba del toolkit (Paso 3).
 
   reconocer(nombre)            resuelve un nombre a sus direcciones IP.
-  escanear(host, puertos, t)   se conecta a cada puerto y lee su banner, como en el laboratorio 4.
+  escanear(host, puertos, t)   se conecta a cada puerto y lee su banner.
   revisar_web(url, t)          pide la página y revisa sus cabeceras HTTP.
+
+BANNER: el saludo con el que un servicio se presenta apenas uno se conecta, como el
+letrero de un local. Muchas veces dice el producto y su versión: "220 (vsFTPd 2.3.4)".
 
 Los tres devuelven un diccionario con la misma forma:
   {"modulo": ..., "objetivo": ..., "detalle": ..., "hallazgos": [...]}
 Cada hallazgo sale de lo que el módulo OBSERVÓ y trae su evidencia. Nada se inventa.
+Severidades, de mayor a menor: CRITICAL (crítica), HIGH (alta), MEDIUM (media),
+LOW (baja) e INFO (informativa: un dato útil, no un problema).
 Este archivo no revisa permisos: eso lo hace la CLI (Paso 4) antes de llamarlo.
 
 Siglas: TCP (Transmission Control Protocol, protocolo de control de transmisión),
 HTTP (Hypertext Transfer Protocol, protocolo de transferencia de hipertexto),
-URL (Uniform Resource Locator, dirección de una página) y CVE (Common
-Vulnerabilities and Exposures, identificador público de una vulnerabilidad).
+URL (Uniform Resource Locator, dirección de una página), CVE (Common
+Vulnerabilities and Exposures, identificador público de una vulnerabilidad),
+FTP (File Transfer Protocol, transferencia de archivos), SSH (Secure Shell, consola
+remota cifrada) e IPv4 (la versión 4 de las direcciones IP: cuatro números, como 127.0.0.1).
 """
 import socket            # conexiones de red de bajo nivel
 import urllib.error      # los errores que puede devolver una petición web
@@ -38,7 +45,7 @@ def hallazgo(severidad: str, descripcion: str, recomendacion: str, evidencia: st
 
 
 def _por_version(donde: str, texto: str) -> dict:
-    """Clasifica un texto que revela software: HIGH si es una versión antigua, LOW si no."""
+    """Clasifica un texto que revela software: HIGH (alta) si es una versión antigua, LOW (baja) si no."""
     for antigua, motivo in VERSIONES_ANTIGUAS.items():  # .items() entrega pares (clave, valor)
         if antigua in texto:  # ¿el texto contiene la versión antigua?
             return hallazgo("HIGH", f"{donde}: versión antigua expuesta. {motivo}",
@@ -49,14 +56,14 @@ def _por_version(donde: str, texto: str) -> dict:
 
 def reconocer(nombre: str) -> dict:
     """Resuelve un nombre (por ejemplo, localhost) a sus direcciones IPv4."""
-    respuestas = socket.getaddrinfo(nombre, None, socket.AF_INET)  # pregunta al sistema; AF_INET = IPv4
-    ips = sorted({r[4][0] for r in respuestas})  # { } sin repetidos; r[4][0] es la IP de cada respuesta
+    respuestas = socket.getaddrinfo(nombre, None, socket.AF_INET)  # pregunta al sistema; AF_INET pide solo IPv4
+    ips = sorted({r[4][0] for r in respuestas})  # "la IP r[4][0] de cada respuesta r"; las { } quitan repetidos
     encontrado = hallazgo("INFO", f"{nombre} resuelve a {', '.join(ips)}",
                           "Confirmar que todas las direcciones estén en el permiso", ", ".join(ips))
     return {"modulo": "recon", "objetivo": nombre, "detalle": ips, "hallazgos": [encontrado]}
 
 
-def leer_banner(host: str, puerto: int, timeout: float) -> str | None:
+def leer_banner(host: str, puerto: int, timeout: float) -> str | None:  # str | None: devuelve texto o nada
     """Devuelve el banner, "" si el puerto está abierto pero callado, o None si está cerrado."""
     try:
         with socket.create_connection((host, puerto), timeout=timeout) as conexion:  # with cierra solo
@@ -86,18 +93,18 @@ def escanear(host: str, puertos: list[int], timeout: float) -> dict:
 
 
 def revisar_web(url: str, timeout: float) -> dict:
-    """Pide la URL y revisa las cabeceras de seguridad y la cabecera Server."""
-    navegador = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # {} = sin proxy: va directo
-    pedido = urllib.request.Request(url, headers={"User-Agent": "toolkit-lab08 (prueba autorizada)"})
+    """Pide la URL y revisa las cabeceras de seguridad y la cabecera Server (servidor)."""
+    navegador = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # sin proxy (intermediario): va directo
+    pedido = urllib.request.Request(url, headers={"User-Agent": "toolkit-lab08 (prueba autorizada)"})  # User-Agent: quién pide
     try:
-        with navegador.open(pedido, timeout=timeout) as respuesta:  # hace la petición GET
+        with navegador.open(pedido, timeout=timeout) as respuesta:  # hace la petición GET ("dame la página")
             estado, cabeceras = respuesta.status, respuesta.headers  # 200 y las cabeceras recibidas
     except urllib.error.HTTPError as error:  # 404, 500...: la respuesta también trae cabeceras
         estado, cabeceras = error.code, error.headers
-    hallazgos = [hallazgo("MEDIUM", f"Falta la cabecera {nombre}", f"Agregarla: {uso}", url)
-                 for nombre, uso in CABECERAS_SEGURIDAD.items() if nombre not in cabeceras]  # solo faltantes
+    hallazgos = [hallazgo("MEDIUM", f"Falta la cabecera {nombre}", f"Agregarla: {uso}", url)  # se lee: "un hallazgo
+                 for nombre, uso in CABECERAS_SEGURIDAD.items() if nombre not in cabeceras]  # por cada cabecera que falte"
     servidor = cabeceras.get("Server", "")  # .get devuelve "" si la cabecera no existe
-    if any(c.isdigit() for c in servidor):  # ¿algún carácter es un dígito? entonces muestra versión
+    if any(c.isdigit() for c in servidor):  # any: ¿ALGÚN carácter c es un dígito? entonces muestra versión
         hallazgos.insert(0, _por_version("Cabecera Server", servidor))  # insert(0, ...) lo pone de primero
     return {"modulo": "web", "objetivo": url, "detalle": {"estado": estado, "server": servidor},
             "hallazgos": hallazgos}

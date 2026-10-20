@@ -3,7 +3,7 @@
 
 Curso Seguridad informática con Python, capítulo 8: integración y entrega de un toolkit ético.
 
-En este laboratorio usted junta en un solo programa lo que construyó en los capítulos anteriores. El resultado es una CLI (Command Line Interface, interfaz de línea de comandos) que:
+En este laboratorio usted junta en un solo programa lo que construyó en los capítulos anteriores, como la lectura de banners del [laboratorio 4](https://github.com/andresgarcia0313/pyhacklabcap4). El resultado es una CLI (Command Line Interface, interfaz de línea de comandos) que:
 
 - **se niega a trabajar sin permiso escrito y vigente**, y compara cada objetivo con las direcciones autorizadas;
 - **deja constancia** de cada acción, permitida o negada, en un registro de auditoría;

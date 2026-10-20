@@ -19,7 +19,7 @@ fallos = []
 
 
 def comprobar(nombre: str, ok: bool, detalle: str = "") -> None:
-    print(f"  {'PASS' if ok else 'FAIL'} | {nombre}{f' ({detalle})' if detalle else ''}")
+    print(f"  {'PASA ' if ok else 'FALLA'} | {nombre}{f' ({detalle})' if detalle else ''}")
     if not ok:
         fallos.append(nombre)
 
@@ -27,10 +27,10 @@ def comprobar(nombre: str, ok: bool, detalle: str = "") -> None:
 try:
     permiso = cargar_autorizacion("authorization.json")
 except AutorizacionError as error:
-    sys.exit(f"FAIL | {error}")
+    sys.exit(f"FALLA | {error}")
 reporte = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "reporte_final.html")
 if not reporte.exists():
-    sys.exit(f"FAIL | No existe {reporte}. Genérelo con: python3 -m toolkit.cli report")
+    sys.exit(f"FALLA | No existe {reporte}. Genérelo con: python3 -m toolkit.cli report")
 html = reporte.read_text(encoding="utf-8")
 auditoria = leer_auditoria()
 

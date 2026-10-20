@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Paso 8: deja el entorno limpio. Detiene el simulador si quedó corriendo.
+# Paso 9: deja el entorno limpio. Detiene el simulador si quedó corriendo.
 # Uso: ./limpiar.sh                 (conserva registros, resultados y reportes)
 #      ./limpiar.sh --borrar-datos  (además borra toolkit/datos/, datos_comprobacion/ y reporte_final.*)
 set -euo pipefail

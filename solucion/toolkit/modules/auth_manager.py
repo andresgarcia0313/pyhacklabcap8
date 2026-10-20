@@ -31,24 +31,24 @@ class AutorizacionError(Exception):  # un tipo de ERROR propio; hereda de Except
     """Error que detiene el toolkit cuando no hay un permiso válido."""
 
 
-def cargar_autorizacion(ruta: str | Path) -> dict:  # recibe una ruta y devuelve un diccionario
+def cargar_autorizacion(ruta: str | Path) -> dict:  # str | Path: acepta un texto O una ruta; -> dict: devuelve un diccionario
     """Lee el archivo de autorización y comprueba campos y vigencia. Devuelve sus datos."""
     ruta = Path(ruta)  # texto -> ruta, para poder preguntarle si existe
     if not ruta.exists():  # sin archivo no hay permiso
-        raise AutorizacionError(f"Archivo de autorización no encontrado: {ruta}")  # raise detiene todo
+        raise AutorizacionError(f"Archivo de autorización no encontrado: {ruta}")  # f"...{ruta}": la f mete el valor de ruta en el texto
     try:  # try: intente esto; si ocurre el error de "except", atiéndalo allá
         datos = json.loads(ruta.read_text(encoding="utf-8"))  # texto JSON -> diccionario de Python
     except json.JSONDecodeError as error:  # el archivo no es JSON válido (falta una coma, una comilla...)
-        raise AutorizacionError(f"{ruta} no es un JSON válido: {error}") from error
-    faltantes = [c for c in CAMPOS_REQUERIDOS if not datos.get(c)]  # campos ausentes o vacíos
+        raise AutorizacionError(f"{ruta} no es un JSON válido: {error}") from error  # from error: conserva la causa original
+    faltantes = [c for c in CAMPOS_REQUERIDOS if not datos.get(c)]  # se lee: "cada campo c de la lista, si viene vacío o no está"
     if faltantes:  # una lista con elementos cuenta como verdadera
-        raise AutorizacionError("Campos obligatorios faltantes: " + ", ".join(faltantes))
+        raise AutorizacionError("Campos obligatorios faltantes: " + ", ".join(faltantes))  # join une la lista con comas
     try:
         inicio = datetime.date.fromisoformat(datos["fecha_inicio"])  # "2026-10-20" -> fecha
         fin = datetime.date.fromisoformat(datos["fecha_fin"])  # falla si no viene como AAAA-MM-DD
     except ValueError:
         raise AutorizacionError("Fechas con formato inválido: use AAAA-MM-DD "
-                                "o ejecute python3 preparar_autorizacion.py") from None
+                                "o ejecute python3 preparar_autorizacion.py") from None  # from None: muestra solo este mensaje
     hoy = datetime.date.today()  # la fecha de su computador
     if not inicio <= hoy <= fin:  # se lee: "hoy está entre inicio y fin"
         raise AutorizacionError(f"Autorización fuera de vigencia ({inicio} a {fin}). Hoy: {hoy}")
@@ -79,7 +79,7 @@ def verificar_activo_autorizado(objetivo: str, autorizacion: dict) -> bool:
             red = ipaddress.ip_network(activo, strict=False)  # "127.0.0.1" = un equipo; "x/24" = una red
         except ValueError:  # este activo es un nombre: no aplica a una IP
             continue
-        if ip in red:  # pertenencia real a la red, calculada con números
+        if ip in red:  # "in" pregunta si la IP pertenece a la red, calculado con números
             return True
     return False  # ningún activo coincidió
 
@@ -87,4 +87,5 @@ def verificar_activo_autorizado(objetivo: str, autorizacion: dict) -> bool:
 def huella_autorizacion(autorizacion: dict) -> str:
     """Huella corta (SHA-256) del permiso: si alguien cambia el archivo, la huella cambia."""
     contenido = json.dumps(autorizacion, sort_keys=True, ensure_ascii=False)  # mismo contenido, mismo texto
-    return hashlib.sha256(contenido.encode("utf-8")).hexdigest()[:16]  # [:16] = primeros 16 caracteres
+    huella = hashlib.sha256(contenido.encode("utf-8"))  # encode: texto -> bytes, que es lo que sha256 sabe leer
+    return huella.hexdigest()[:16]  # hexdigest: la huella en letras y números; [:16] = los primeros 16

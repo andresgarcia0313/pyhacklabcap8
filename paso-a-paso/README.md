@@ -1,7 +1,7 @@
 <!-- Idioma del documento: es-CO (español de Colombia) -->
 # Guía paso a paso: arme su toolkit de pruebas de seguridad autorizadas
 
-En los laboratorios anteriores usted escribió herramientas sueltas. Aquí las junta en **un solo programa que se niega a trabajar sin permiso**, deja constancia de todo lo que hace y entrega un reporte que un cliente podría leer. Es la diferencia entre tener herramientas y tener una forma profesional de trabajar.
+En los laboratorios anteriores (por ejemplo, el [laboratorio 4](https://github.com/andresgarcia0313/pyhacklabcap4)) usted escribió herramientas sueltas. Aquí las junta en **un solo programa que se niega a trabajar sin permiso**, deja constancia de todo lo que hace y entrega un reporte que un cliente podría leer. Es la diferencia entre tener herramientas y tener una forma profesional de trabajar.
 
 En cada paso usted crea un archivo, pega el código de la guía, lo ejecuta y ve algo funcionando. Antes de ejecutar, la guía le pide **anotar qué cree que va a pasar**: compare su apuesta con lo que muestra la terminal. El código viene comentado al final de cada línea para que lo lea sin saltar a otro lado.
 
@@ -66,6 +66,11 @@ Cada orden pasa por el mismo camino: **permiso válido, objetivo autorizado, mó
 
 - **Un paquete es una carpeta de módulos.** `toolkit/` y `toolkit/modules/` tienen un archivo `__init__.py` vacío: eso le dice a Python "esta carpeta es un paquete". Por eso se importa con puntos: `from toolkit.modules.auth_manager import ...`.
 - **`python3 -m toolkit.cli`** ejecuta el archivo `toolkit/cli.py` como programa. Funciona desde esta carpeta, que es donde está `toolkit/`.
+- **f-strings:** un texto con una `f` delante, como `f"Hola {nombre}"`, reemplaza lo que va entre llaves por su valor. Si `nombre` vale `"Ana"`, el texto queda `Hola Ana`.
+- **Comprensiones:** `[c for c in lista if condicion]` arma una lista nueva en una sola línea. Se lee "cada `c` de la lista, si cumple la condición". Con llaves `{ }` arma un conjunto (sin repetidos) o un diccionario.
+- **Expresiones regulares:** patrones para buscar texto. `\d` es un dígito, `\S` un carácter que no es espacio, `+` significa "uno o más" y los paréntesis `( )` guardan la parte que interesa. Cada archivo que las usa trae su leyenda en el comentario inicial.
+- **`str | None` en una función:** la barra `|` se lee "o": la función devuelve un texto o nada. Son pistas para quien lee; Python no las exige.
+- **`if __name__ == "__main__":`** marca el código que corre solo cuando usted ejecuta ese archivo, y no cuando otro archivo lo importa.
 - **`try` / `except`**: "intente esto y, si ocurre tal error, haga esto otro". Así un error esperado (un permiso vencido) se convierte en un mensaje claro.
 - **`raise`** lanza un error a propósito y detiene lo que se estaba haciendo.
 - **`with`** abre algo (un archivo, una conexión) y lo cierra solo al terminar el bloque, pase lo que pase.
@@ -73,15 +78,22 @@ Cada orden pasa por el mismo camino: **permiso válido, objetivo autorizado, mó
 
 ## Paso 0: preparar el entorno
 
+Dos palabras nuevas: **venv** (entorno virtual) es una carpeta con un Python propio para este laboratorio, y **pip** es el instalador de librerías de Python.
+
 ```bash
 cd pyhacklabcap8/paso-a-paso        # ajuste la ruta si clonó el repositorio en otro lugar
-python3 -m venv .venv               # crea un Python propio para este laboratorio
+python3 -m venv .venv               # crea el entorno virtual en la carpeta .venv
 source .venv/bin/activate           # lo activa: la línea empezará con (.venv)
 pip install -r requirements.txt     # instala jinja2 (plantillas) y pytest (pruebas)
 python3 -c "import jinja2, pytest; print('Dependencias OK')"
 ```
 
-Salida esperada: `Dependencias OK`. Active el entorno en **ambas** terminales: cada terminal nueva empieza sin él.
+Salida esperada: `Dependencias OK`. Cada terminal nueva empieza sin el entorno, así que en la **terminal A** ejecute también:
+
+```bash
+cd pyhacklabcap8/paso-a-paso
+source .venv/bin/activate
+```
 
 > Sin Internet: cree el entorno con `python3 -m venv --system-site-packages .venv` para reutilizar lo que ya tenga instalado.
 
@@ -100,7 +112,7 @@ python3 preparar_autorizacion.py
     Activos autorizados: 127.0.0.1, localhost
 ```
 
-Abra `authorization.json` y mírelo: es un documento corto con cliente, contacto, identificador del permiso firmado, activos y fechas. Este archivo **no se sube a Git** (está en `.gitignore`), igual que no se publicaría el contrato de un cliente.
+Abra `authorization.json` y mírelo: es un documento corto con cliente, contacto, identificador del permiso firmado, activos, fechas, tipo de prueba y notas. `caja_gris` significa que quien prueba conoce parte del sistema (en caja negra no conoce nada; en caja blanca, todo). Este archivo **no se sube a Git** (está en `.gitignore`), igual que no se publicaría el contrato de un cliente.
 
 Ahora cree el archivo `toolkit/modules/auth_manager.py`, pegue este código y guárdelo:
 
@@ -139,24 +151,24 @@ class AutorizacionError(Exception):  # un tipo de ERROR propio; hereda de Except
     """Error que detiene el toolkit cuando no hay un permiso válido."""
 
 
-def cargar_autorizacion(ruta: str | Path) -> dict:  # recibe una ruta y devuelve un diccionario
+def cargar_autorizacion(ruta: str | Path) -> dict:  # str | Path: acepta un texto O una ruta; -> dict: devuelve un diccionario
     """Lee el archivo de autorización y comprueba campos y vigencia. Devuelve sus datos."""
     ruta = Path(ruta)  # texto -> ruta, para poder preguntarle si existe
     if not ruta.exists():  # sin archivo no hay permiso
-        raise AutorizacionError(f"Archivo de autorización no encontrado: {ruta}")  # raise detiene todo
+        raise AutorizacionError(f"Archivo de autorización no encontrado: {ruta}")  # f"...{ruta}": la f mete el valor de ruta en el texto
     try:  # try: intente esto; si ocurre el error de "except", atiéndalo allá
         datos = json.loads(ruta.read_text(encoding="utf-8"))  # texto JSON -> diccionario de Python
     except json.JSONDecodeError as error:  # el archivo no es JSON válido (falta una coma, una comilla...)
-        raise AutorizacionError(f"{ruta} no es un JSON válido: {error}") from error
-    faltantes = [c for c in CAMPOS_REQUERIDOS if not datos.get(c)]  # campos ausentes o vacíos
+        raise AutorizacionError(f"{ruta} no es un JSON válido: {error}") from error  # from error: conserva la causa original
+    faltantes = [c for c in CAMPOS_REQUERIDOS if not datos.get(c)]  # se lee: "cada campo c de la lista, si viene vacío o no está"
     if faltantes:  # una lista con elementos cuenta como verdadera
-        raise AutorizacionError("Campos obligatorios faltantes: " + ", ".join(faltantes))
+        raise AutorizacionError("Campos obligatorios faltantes: " + ", ".join(faltantes))  # join une la lista con comas
     try:
         inicio = datetime.date.fromisoformat(datos["fecha_inicio"])  # "2026-10-20" -> fecha
         fin = datetime.date.fromisoformat(datos["fecha_fin"])  # falla si no viene como AAAA-MM-DD
     except ValueError:
         raise AutorizacionError("Fechas con formato inválido: use AAAA-MM-DD "
-                                "o ejecute python3 preparar_autorizacion.py") from None
+                                "o ejecute python3 preparar_autorizacion.py") from None  # from None: muestra solo este mensaje
     hoy = datetime.date.today()  # la fecha de su computador
     if not inicio <= hoy <= fin:  # se lee: "hoy está entre inicio y fin"
         raise AutorizacionError(f"Autorización fuera de vigencia ({inicio} a {fin}). Hoy: {hoy}")
@@ -187,7 +199,7 @@ def verificar_activo_autorizado(objetivo: str, autorizacion: dict) -> bool:
             red = ipaddress.ip_network(activo, strict=False)  # "127.0.0.1" = un equipo; "x/24" = una red
         except ValueError:  # este activo es un nombre: no aplica a una IP
             continue
-        if ip in red:  # pertenencia real a la red, calculada con números
+        if ip in red:  # "in" pregunta si la IP pertenece a la red, calculado con números
             return True
     return False  # ningún activo coincidió
 
@@ -195,7 +207,8 @@ def verificar_activo_autorizado(objetivo: str, autorizacion: dict) -> bool:
 def huella_autorizacion(autorizacion: dict) -> str:
     """Huella corta (SHA-256) del permiso: si alguien cambia el archivo, la huella cambia."""
     contenido = json.dumps(autorizacion, sort_keys=True, ensure_ascii=False)  # mismo contenido, mismo texto
-    return hashlib.sha256(contenido.encode("utf-8")).hexdigest()[:16]  # [:16] = primeros 16 caracteres
+    huella = hashlib.sha256(contenido.encode("utf-8"))  # encode: texto -> bytes, que es lo que sha256 sabe leer
+    return huella.hexdigest()[:16]  # hexdigest: la huella en letras y números; [:16] = los primeros 16
 ```
 
 **Fíjese en:**
@@ -229,7 +242,7 @@ localhost.ejemplo.com  NO
 
 ## Paso 2: la constancia de todo (`toolkit/modules/audit_logger.py`)
 
-**Concepto.** La portería de un edificio lleva una minuta: quién entró, a qué apartamento, a qué hora. El registro de auditoría es esa minuta para su toolkit. Cada acción, permitida o negada, queda en `toolkit/datos/audit_AAAA-MM-DD.log`. Los hallazgos de cada módulo se guardan aparte en archivos JSON, y el reporte los lee de ahí.
+**Concepto.** La portería de un edificio lleva una minuta: quién entró, a qué apartamento, a qué hora. El registro de auditoría es esa minuta para su toolkit. Cada acción, permitida o negada, queda en `toolkit/datos/audit_AAAA-MM-DD.log` con un nivel: `INFO` (información), `WARNING` (advertencia) o `ERROR` (error). Los hallazgos de cada módulo se guardan aparte en archivos JSON, y el reporte los lee de ahí.
 
 Cree el archivo `toolkit/modules/audit_logger.py`, pegue este código y guárdelo:
 
@@ -242,14 +255,24 @@ Piense en la minuta de la portería de un edificio: quién entró, a qué aparta
 a qué hora y qué pasó. La auditoría es esa minuta: QUIÉN hizo QUÉ, CONTRA QUÉ
 objetivo, CUÁNDO y con QUÉ resultado. También queda escrito lo que se negó.
 
+Cada línea lleva un NIVEL: INFO (información, todo normal), WARNING (advertencia,
+por ejemplo algo negado) o ERROR (error, algo falló).
+
 Todo se guarda en toolkit/datos/. Esa ruta se calcula desde la ubicación de ESTE
 archivo, no desde la carpeta en la que esté parada la terminal: ejecute el toolkit
 desde donde lo ejecute, los datos quedan en el mismo lugar. La variable de entorno
 TOOLKIT_DATOS cambia esa carpeta; las pruebas la usan para no mezclar sus datos con los suyos.
 
 Archivos que se crean:
-  datos/audit_AAAA-MM-DD.log  una línea por acción, un archivo por día
-  datos/resultado_*.json      los hallazgos de cada módulo, que luego lee el reporte
+  toolkit/datos/audit_AAAA-MM-DD.log  una línea por acción, un archivo por día
+  toolkit/datos/resultado_*.json      los hallazgos de cada módulo, que luego lee el reporte
+
+Para volver a leer el registro se usa una EXPRESIÓN REGULAR: un patrón que describe
+cómo es una línea. Símbolos de PATRON:
+  ^ y $   inicio y fin de la línea         \\S+  uno o más caracteres que no son espacio
+  \\w+     una o más letras o dígitos       \\s*  cero o más espacios
+  \\|      una barra | literal              .*   cualquier cosa, hasta el final
+  ( )     GRUPO: la parte que se guarda; m[1] es el primer grupo, m[2] el segundo...
 """
 import datetime
 import getpass            # getuser() dice qué usuario del sistema ejecuta el programa
@@ -261,8 +284,8 @@ from pathlib import Path
 
 PAQUETE = Path(__file__).resolve().parents[1]  # __file__ = este archivo; parents[1] sube a toolkit/
 FORMATO = "%(asctime)s | %(levelname)-8s | %(message)s"  # fecha | nivel | mensaje
-PATRON = re.compile(r"^(\S+ \S+) \| (\w+)\s*\| USUARIO=(\S+) \| ACCION=(\S+) \| "  # cada ( ) captura
-                    r"OBJETIVO=(\S+) \| RESULTADO=(.*)$")  # un dato de la línea
+PATRON = re.compile(r"^(\S+ \S+) \| (\w+)\s*\| USUARIO=(\S+) \| ACCION=(\S+) \| "  # la r antes de las comillas:
+                    r"OBJETIVO=(\S+) \| RESULTADO=(.*)$")  # Python no toca las barras \ (texto crudo)
 
 
 def carpeta_datos() -> Path:
@@ -280,7 +303,7 @@ def configurar_logger() -> logging.Logger:
         manejador.close()  # cierra el archivo anterior
     logger.setLevel(logging.INFO)  # guarda INFO, WARNING y ERROR
     logger.propagate = False  # no repite los mensajes en la consola
-    nombre = f"audit_{datetime.date.today().isoformat()}.log"  # audit_2026-10-20.log
+    nombre = f"audit_{datetime.date.today().isoformat()}.log"  # f-string: {...} se reemplaza por la fecha
     archivo = logging.FileHandler(carpeta_datos() / nombre, encoding="utf-8")  # el operador / une rutas
     archivo.setFormatter(logging.Formatter(FORMATO, datefmt="%Y-%m-%d %H:%M:%S"))
     logger.addHandler(archivo)
@@ -326,7 +349,7 @@ def leer_resultados() -> list[dict]:
         return archivo.name.split("_", 2)[2]  # "resultado_scan_20261020_..." -> "20261020_..."
 
     archivos = sorted(carpeta_datos().glob("resultado_*.json"), key=fecha_del_nombre)  # key: orden por fecha
-    return [json.loads(a.read_text(encoding="utf-8")) for a in archivos]  # cada archivo -> diccionario
+    return [json.loads(a.read_text(encoding="utf-8")) for a in archivos]  # "por cada archivo a, su contenido"
 ```
 
 **Fíjese en:**
@@ -361,7 +384,9 @@ Debe terminar en `5 passed`.
 
 ## Paso 3: los tres módulos (`toolkit/modules/escaner.py`)
 
-**Concepto.** Aquí vuelve lo que ya sabe hacer: leer el banner de un puerto, como en el laboratorio 4, y revisar las cabeceras de una página web. Lo nuevo es la forma de la respuesta. Los tres módulos (`recon`, `scan` y `web`) devuelven lo mismo: qué módulo, contra qué objetivo, qué vio y **qué hallazgos salen de lo que vio**, cada uno con su evidencia.
+**Concepto.** Un **banner** es el saludo con el que un servicio se presenta apenas usted se conecta, como el letrero de un local; muchas veces dice el producto y la versión. Leerlo es lo que hizo en el [laboratorio 4](https://github.com/andresgarcia0313/pyhacklabcap4). Aquí vuelve esa idea, junto con la revisión de las cabeceras de una página web. Lo nuevo es la forma de la respuesta. Los tres módulos (`recon`, `scan` y `web`) devuelven lo mismo: qué módulo, contra qué objetivo, qué vio y **qué hallazgos salen de lo que vio**, cada uno con su evidencia. La gravedad va en inglés, como en los reportes reales: `CRITICAL` (crítica), `HIGH` (alta), `MEDIUM` (media), `LOW` (baja) e `INFO` (informativa).
+
+Siglas de los servicios del simulador: FTP (File Transfer Protocol, transferencia de archivos), SSH (Secure Shell, consola remota cifrada) y SMTP (Simple Mail Transfer Protocol, envío de correo).
 
 Cree el archivo `toolkit/modules/escaner.py`, pegue este código y guárdelo:
 
@@ -371,18 +396,25 @@ Cree el archivo `toolkit/modules/escaner.py`, pegue este código y guárdelo:
 escaner.py - Los tres módulos de prueba del toolkit (Paso 3).
 
   reconocer(nombre)            resuelve un nombre a sus direcciones IP.
-  escanear(host, puertos, t)   se conecta a cada puerto y lee su banner, como en el laboratorio 4.
+  escanear(host, puertos, t)   se conecta a cada puerto y lee su banner.
   revisar_web(url, t)          pide la página y revisa sus cabeceras HTTP.
+
+BANNER: el saludo con el que un servicio se presenta apenas uno se conecta, como el
+letrero de un local. Muchas veces dice el producto y su versión: "220 (vsFTPd 2.3.4)".
 
 Los tres devuelven un diccionario con la misma forma:
   {"modulo": ..., "objetivo": ..., "detalle": ..., "hallazgos": [...]}
 Cada hallazgo sale de lo que el módulo OBSERVÓ y trae su evidencia. Nada se inventa.
+Severidades, de mayor a menor: CRITICAL (crítica), HIGH (alta), MEDIUM (media),
+LOW (baja) e INFO (informativa: un dato útil, no un problema).
 Este archivo no revisa permisos: eso lo hace la CLI (Paso 4) antes de llamarlo.
 
 Siglas: TCP (Transmission Control Protocol, protocolo de control de transmisión),
 HTTP (Hypertext Transfer Protocol, protocolo de transferencia de hipertexto),
-URL (Uniform Resource Locator, dirección de una página) y CVE (Common
-Vulnerabilities and Exposures, identificador público de una vulnerabilidad).
+URL (Uniform Resource Locator, dirección de una página), CVE (Common
+Vulnerabilities and Exposures, identificador público de una vulnerabilidad),
+FTP (File Transfer Protocol, transferencia de archivos), SSH (Secure Shell, consola
+remota cifrada) e IPv4 (la versión 4 de las direcciones IP: cuatro números, como 127.0.0.1).
 """
 import socket            # conexiones de red de bajo nivel
 import urllib.error      # los errores que puede devolver una petición web
@@ -407,7 +439,7 @@ def hallazgo(severidad: str, descripcion: str, recomendacion: str, evidencia: st
 
 
 def _por_version(donde: str, texto: str) -> dict:
-    """Clasifica un texto que revela software: HIGH si es una versión antigua, LOW si no."""
+    """Clasifica un texto que revela software: HIGH (alta) si es una versión antigua, LOW (baja) si no."""
     for antigua, motivo in VERSIONES_ANTIGUAS.items():  # .items() entrega pares (clave, valor)
         if antigua in texto:  # ¿el texto contiene la versión antigua?
             return hallazgo("HIGH", f"{donde}: versión antigua expuesta. {motivo}",
@@ -418,14 +450,14 @@ def _por_version(donde: str, texto: str) -> dict:
 
 def reconocer(nombre: str) -> dict:
     """Resuelve un nombre (por ejemplo, localhost) a sus direcciones IPv4."""
-    respuestas = socket.getaddrinfo(nombre, None, socket.AF_INET)  # pregunta al sistema; AF_INET = IPv4
-    ips = sorted({r[4][0] for r in respuestas})  # { } sin repetidos; r[4][0] es la IP de cada respuesta
+    respuestas = socket.getaddrinfo(nombre, None, socket.AF_INET)  # pregunta al sistema; AF_INET pide solo IPv4
+    ips = sorted({r[4][0] for r in respuestas})  # "la IP r[4][0] de cada respuesta r"; las { } quitan repetidos
     encontrado = hallazgo("INFO", f"{nombre} resuelve a {', '.join(ips)}",
                           "Confirmar que todas las direcciones estén en el permiso", ", ".join(ips))
     return {"modulo": "recon", "objetivo": nombre, "detalle": ips, "hallazgos": [encontrado]}
 
 
-def leer_banner(host: str, puerto: int, timeout: float) -> str | None:
+def leer_banner(host: str, puerto: int, timeout: float) -> str | None:  # str | None: devuelve texto o nada
     """Devuelve el banner, "" si el puerto está abierto pero callado, o None si está cerrado."""
     try:
         with socket.create_connection((host, puerto), timeout=timeout) as conexion:  # with cierra solo
@@ -455,18 +487,18 @@ def escanear(host: str, puertos: list[int], timeout: float) -> dict:
 
 
 def revisar_web(url: str, timeout: float) -> dict:
-    """Pide la URL y revisa las cabeceras de seguridad y la cabecera Server."""
-    navegador = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # {} = sin proxy: va directo
-    pedido = urllib.request.Request(url, headers={"User-Agent": "toolkit-lab08 (prueba autorizada)"})
+    """Pide la URL y revisa las cabeceras de seguridad y la cabecera Server (servidor)."""
+    navegador = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # sin proxy (intermediario): va directo
+    pedido = urllib.request.Request(url, headers={"User-Agent": "toolkit-lab08 (prueba autorizada)"})  # User-Agent: quién pide
     try:
-        with navegador.open(pedido, timeout=timeout) as respuesta:  # hace la petición GET
+        with navegador.open(pedido, timeout=timeout) as respuesta:  # hace la petición GET ("dame la página")
             estado, cabeceras = respuesta.status, respuesta.headers  # 200 y las cabeceras recibidas
     except urllib.error.HTTPError as error:  # 404, 500...: la respuesta también trae cabeceras
         estado, cabeceras = error.code, error.headers
-    hallazgos = [hallazgo("MEDIUM", f"Falta la cabecera {nombre}", f"Agregarla: {uso}", url)
-                 for nombre, uso in CABECERAS_SEGURIDAD.items() if nombre not in cabeceras]  # solo faltantes
+    hallazgos = [hallazgo("MEDIUM", f"Falta la cabecera {nombre}", f"Agregarla: {uso}", url)  # se lee: "un hallazgo
+                 for nombre, uso in CABECERAS_SEGURIDAD.items() if nombre not in cabeceras]  # por cada cabecera que falte"
     servidor = cabeceras.get("Server", "")  # .get devuelve "" si la cabecera no existe
-    if any(c.isdigit() for c in servidor):  # ¿algún carácter es un dígito? entonces muestra versión
+    if any(c.isdigit() for c in servidor):  # any: ¿ALGÚN carácter c es un dígito? entonces muestra versión
         hallazgos.insert(0, _por_version("Cabecera Server", servidor))  # insert(0, ...) lo pone de primero
     return {"modulo": "web", "objetivo": url, "detalle": {"estado": estado, "server": servidor},
             "hallazgos": hallazgos}
@@ -476,7 +508,8 @@ def revisar_web(url: str, timeout: float) -> dict:
 
 - `leer_banner` distingue tres casos: banner (texto), abierto pero callado (`""`) y cerrado (`None`).
 - Cada hallazgo lleva la **evidencia** que lo sostiene: el banner o la URL exactos.
-- `ProxyHandler({})` hace que la petición vaya directo a `127.0.0.1`, aunque su equipo tenga un proxy configurado.
+- `ProxyHandler({})` hace que la petición vaya directo a `127.0.0.1`, aunque su equipo tenga un proxy (intermediario de red) configurado.
+- `User-Agent` es la cabecera con la que quien pide se presenta, y `GET` es la petición "deme esta página".
 
 En la **terminal A**, inicie el simulador y déjelo corriendo:
 
@@ -539,24 +572,28 @@ maneja escribiendo órdenes en la terminal, por ejemplo:
 Cada orden sigue el mismo camino, sin atajos:
     permiso válido -> objetivo autorizado -> módulo -> evidencia -> auditoría
 Si algo falla, el programa se detiene, lo deja en el registro y sale con código 1.
+
+El PARSER (analizador) es la pieza de argparse que lee lo que usted escribió y lo
+separa en partes: la orden (scan), el objetivo (127.0.0.1) y las opciones (--puertos).
 """
 import argparse  # lee las opciones escritas en la terminal y genera la ayuda (--help)
 import ipaddress
 import logging
+import os        # os.path.relpath acorta una ruta para mostrarla
 import socket
 from pathlib import Path
 from urllib.parse import urlsplit  # separa una URL en partes: esquema, equipo, puerto...
 
-from toolkit.modules import escaner  # los módulos de los pasos 1, 2 y 3 (carpeta toolkit/modules/)
-from toolkit.modules.audit_logger import configurar_logger, guardar_resultado, registrar
-from toolkit.modules.auth_manager import (AutorizacionError, cargar_autorizacion,
+from toolkit.modules import escaner  # módulos del Paso 3 (archivo toolkit/modules/escaner.py)
+from toolkit.modules.audit_logger import configurar_logger, guardar_resultado, registrar  # Paso 2
+from toolkit.modules.auth_manager import (AutorizacionError, cargar_autorizacion,  # Paso 1
                                           huella_autorizacion, verificar_activo_autorizado)
 
 
 def _puertos(texto: str) -> list[int]:
     """Convierte "20021,20022" en [20021, 20022] y rechaza valores fuera de 1-65535."""
-    puertos = [int(p) for p in texto.split(",")]  # int() falla si no es un número
-    if not all(1 <= p <= 65535 for p in puertos):
+    puertos = [int(p) for p in texto.split(",")]  # "cada trozo p, convertido en número"; int() falla si no lo es
+    if not all(1 <= p <= 65535 for p in puertos):  # all: ¿TODOS los puertos están entre 1 y 65535?
         raise argparse.ArgumentTypeError("los puertos van de 1 a 65535")
     return puertos
 
@@ -576,7 +613,7 @@ def ejecutar_modulo(args: argparse.Namespace, auth: dict) -> dict:
         url = urlsplit(args.objetivo)
         if url.scheme not in ("http", "https"):
             raise AutorizacionError("La URL debe empezar por http:// o https://")
-        _exigir_activo(url.hostname or "", auth)  # se revisa el equipo de la URL
+        _exigir_activo(url.hostname or "", auth)  # se revisa el equipo de la URL; "or" da "" si no hay equipo
         return escaner.revisar_web(args.objetivo, args.timeout)
     _exigir_activo(args.objetivo, auth)
     if args.comando == "recon":
@@ -589,29 +626,30 @@ def construir_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="toolkit", description="Toolkit de pruebas de "
                                      "seguridad autorizadas. Solo con permiso escrito.")
     parser.add_argument("--auth", default="authorization.json", help="archivo de autorización")
-    sub = parser.add_subparsers(dest="comando", metavar="MODULO", required=True)
+    sub = parser.add_subparsers(dest="comando", metavar="MODULO", required=True)  # dest: dónde queda la orden
+    # metavar: nombre que muestra la ayuda; required=True: sin orden no arranca
     recon = sub.add_parser("recon", help="resolver un nombre a sus direcciones IP")
     recon.add_argument("objetivo", help="nombre o IP, por ejemplo localhost")
-    scan = sub.add_parser("scan", help="leer los banners de puertos TCP")
+    scan = sub.add_parser("scan", help="leer los banners (saludos) de puertos TCP")
     scan.add_argument("objetivo", help="IP o nombre, por ejemplo 127.0.0.1")
     scan.add_argument("--puertos", type=_puertos, default="20021,20022,20023,20025,20080",
                       help="puertos separados por comas")
     web = sub.add_parser("web", help="revisar las cabeceras de seguridad de una página")
     web.add_argument("objetivo", metavar="url", help="por ejemplo http://127.0.0.1:20080/")
     for orden in (scan, web):  # las dos órdenes que se conectan aceptan --timeout
-        orden.add_argument("--timeout", type=float, default=1.0, help="segundos por conexión")
+        orden.add_argument("--timeout", type=float, default=1.0, help="segundos de espera por conexión")
     report = sub.add_parser("report", help="generar el reporte con los hallazgos guardados")
-    report.add_argument("--formato", choices=["html", "markdown"], default="html")
-    report.add_argument("--salida", type=Path, default=Path("reporte_final.html"))
+    report.add_argument("--formato", choices=["html", "markdown"], default="html", help="html o markdown")
+    report.add_argument("--salida", type=Path, default=Path("reporte_final.html"), help="archivo del reporte")
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:  # argv: las palabras de la orden; None = las de la terminal
     """Punto de entrada: devuelve 0 si todo salió bien y 1 si se negó o falló."""
     args = construir_parser().parse_args(argv)
     logger = configurar_logger()
-    objetivo = getattr(args, "objetivo", "N/A")  # report no tiene objetivo
-    print("=" * 64 + "\n  TOOLKIT DE PRUEBAS AUTORIZADAS - solo con permiso escrito\n" + "=" * 64)
+    objetivo = getattr(args, "objetivo", "N/A")  # getattr: el objetivo si existe; "N/A" en report, que no tiene
+    print("=" * 64 + "\n  TOOLKIT DE PRUEBAS AUTORIZADAS - solo con permiso escrito\n" + "=" * 64)  # "=" * 64 repite el signo 64 veces; "\n" = salto de línea
     try:
         auth = cargar_autorizacion(args.auth)  # sin permiso válido no se hace NADA, ni el reporte
         print(f"[AUTH] Cliente: {auth['cliente']} | Huella: {huella_autorizacion(auth)}")
@@ -623,7 +661,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         resultado = ejecutar_modulo(args, auth)
     except AutorizacionError as error:  # permiso ausente, vencido u objetivo no autorizado
-        registrar(logger, args.comando, objetivo, f"DENEGADO: {error}", logging.WARNING)
+        registrar(logger, args.comando, objetivo, f"DENEGADO: {error}", logging.WARNING)  # WARNING: advertencia
         print(f"[DENEGADO] {error}")
         return 1
     except OSError as error:  # fallas de red o de archivos: el destino no responde, etc.
@@ -633,18 +671,18 @@ def main(argv: list[str] | None = None) -> int:
     ruta = guardar_resultado(resultado)
     registrar(logger, args.comando, objetivo, f"{len(resultado['hallazgos'])} hallazgo(s) en {ruta.name}")
     for h in resultado["hallazgos"]:
-        print(f"  [{h['severidad']:<6}] {h['descripcion']}")
-    print(f"[OK] {len(resultado['hallazgos'])} hallazgo(s) guardados en {ruta.parent.name}/{ruta.name}")
+        print(f"  [{h['severidad']:<6}] {h['descripcion']}")  # :<6 rellena a 6 espacios para alinear
+    print(f"[OK] {len(resultado['hallazgos'])} hallazgo(s) guardados en {os.path.relpath(ruta)}")  # ruta corta
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # __name__ vale "__main__" solo cuando este archivo se ejecuta directamente
     raise SystemExit(main())  # entrega al sistema el código de salida 0 o 1
 ```
 
 **Fíjese en:**
 
-- `argparse` arma la ayuda solo, a partir de las opciones que usted definió.
+- `argparse` arma la ayuda solo, a partir de las opciones que usted definió. El **parser** (analizador) es la pieza que separa lo que usted escribió en orden, objetivo y opciones.
 - Para `web`, el permiso se revisa sobre el **equipo** de la URL (`127.0.0.1`), no sobre la URL entera.
 - `main` devuelve 0 o 1. Ese número es el código de salida: otro programa puede saber si la orden se cumplió sin leer el texto.
 
@@ -662,7 +700,7 @@ Toolkit de pruebas de seguridad autorizadas. Solo con permiso escrito.
 positional arguments:
   MODULO
     recon      resolver un nombre a sus direcciones IP
-    scan       leer los banners de puertos TCP
+    scan       leer los banners (saludos) de puertos TCP
     web        revisar las cabeceras de seguridad de una página
     report     generar el reporte con los hallazgos guardados
 
@@ -670,6 +708,8 @@ options:
   -h, --help   show this help message and exit
   --auth AUTH  archivo de autorización
 ```
+
+argparse escribe en inglés las palabras fijas de la ayuda: `usage` (uso), `positional arguments` (argumentos obligatorios), `options` (opciones) y `show this help message and exit` (muestra esta ayuda y termina).
 
 Con el simulador corriendo en la terminal A, use los tres módulos:
 
@@ -679,7 +719,18 @@ python3 -m toolkit.cli scan 127.0.0.1
 python3 -m toolkit.cli web http://127.0.0.1:20080/
 ```
 
-Salida del escaneo (el nombre del archivo lleva su fecha y hora):
+Salida de `recon`:
+
+```text
+================================================================
+  TOOLKIT DE PRUEBAS AUTORIZADAS - solo con permiso escrito
+================================================================
+[AUTH] Cliente: Laboratorio local del curso | Huella: <huella>
+  [INFO  ] localhost resuelve a 127.0.0.1
+[OK] 1 hallazgo(s) guardados en toolkit/datos/resultado_recon_AAAAMMDD_HHMMSS_ffffff.json
+```
+
+Salida de `scan` (el nombre del archivo lleva su fecha y hora):
 
 ```text
 ================================================================
@@ -690,7 +741,21 @@ Salida del escaneo (el nombre del archivo lleva su fecha y hora):
   [HIGH  ] Puerto 20022: versión antigua expuesta. OpenSSH 4 está sin soporte desde hace más de quince años
   [LOW   ] Puerto 20025: el servicio dice qué software usa
   [INFO  ] Puerto 20080 abierto sin banner
-[OK] 4 hallazgo(s) guardados en datos/resultado_scan_AAAAMMDD_HHMMSS_ffffff.json
+[OK] 4 hallazgo(s) guardados en toolkit/datos/resultado_scan_AAAAMMDD_HHMMSS_ffffff.json
+```
+
+Salida de `web`:
+
+```text
+================================================================
+  TOOLKIT DE PRUEBAS AUTORIZADAS - solo con permiso escrito
+================================================================
+[AUTH] Cliente: Laboratorio local del curso | Huella: <huella>
+  [HIGH  ] Cabecera Server: versión antigua expuesta. Apache 2.2 terminó su soporte en 2017
+  [MEDIUM] Falta la cabecera Content-Security-Policy
+  [MEDIUM] Falta la cabecera X-Frame-Options
+  [MEDIUM] Falta la cabecera X-Content-Type-Options
+[OK] 4 hallazgo(s) guardados en toolkit/datos/resultado_web_AAAAMMDD_HHMMSS_ffffff.json
 ```
 
 **Antes de ejecutar, anote su apuesta:** ¿qué hará el toolkit con `127.0.0.10`? ¿Se conectará y fallará, o no se conectará?
@@ -711,10 +776,10 @@ código de salida: 1
 No se conectó: la negación ocurre antes de abrir cualquier conexión, y quedó escrita. Compruébelo en la minuta del día:
 
 ```bash
-tail -n 2 toolkit/datos/audit_*.log
+tail -n 2 "toolkit/datos/audit_$(date +%F).log"    # $(date +%F) escribe la fecha de hoy
 ```
 
-La última línea es un `WARNING` con `RESULTADO=DENEGADO`. Luego corra las pruebas de la CLI (no abren conexiones a otros equipos):
+La última línea es un `WARNING` (advertencia) con `RESULTADO=DENEGADO`. Luego corra las pruebas de la CLI (no abren conexiones a otros equipos):
 
 ```bash
 python3 -m pytest toolkit/tests/test_cli.py
@@ -741,24 +806,24 @@ Cree el archivo `toolkit/templates/reporte.html`, pegue esta plantilla y guárde
 <head>
   <meta charset="UTF-8">
   <title>Reporte de pruebas de seguridad autorizadas</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 980px; margin: 40px auto; color: #222; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    th { background: #1a1a2e; color: #fff; padding: 8px; text-align: left; }
-    td { padding: 6px 8px; border-bottom: 1px solid #ddd; vertical-align: top; }
-    .aviso { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 14px; }
-    .HIGH, .CRITICAL { color: #b00020; font-weight: bold; }
-    .MEDIUM { color: #b36b00; font-weight: bold; }
+  <style> /* CSS (Cascading Style Sheets, hojas de estilo): colores, letras y márgenes de la página */
+    body { font-family: Arial, sans-serif; max-width: 980px; margin: 40px auto; color: #222; } /* página centrada */
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; } /* tablas a todo el ancho */
+    th { background: #1a1a2e; color: #fff; padding: 8px; text-align: left; } /* títulos: fondo oscuro, letra blanca */
+    td { padding: 6px 8px; border-bottom: 1px solid #ddd; vertical-align: top; } /* celdas con línea gris abajo */
+    .aviso { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 14px; } /* recuadro amarillo */
+    .HIGH, .CRITICAL { color: #b00020; font-weight: bold; } /* severidad alta o crítica: rojo y negrita */
+    .MEDIUM { color: #b36b00; font-weight: bold; } /* severidad media: naranja y negrita */
   </style>
 </head>
 <body>
-  {# Esto es un comentario de Jinja2: no aparece en el reporte. {{ x }} se reemplaza por el valor de x. #}
+  {# Comentario de Jinja2: no aparece en el reporte. {{ x }} se reemplaza por el valor de x. #}
   <h1>Reporte de pruebas de seguridad autorizadas</h1>
   <p class="aviso">Confidencial. Generado el {{ proyecto.generado }}. Solo para el cliente autorizado.</p>
 
   <h2>1. Proyecto</h2>
   <table>
-    <tr><th>Campo</th><th>Valor</th></tr>
+    <tr><th>Campo</th><th>Valor</th></tr> {# <tr> es una fila; <th>, una celda de título; <td>, una celda normal #}
     <tr><td>Cliente</td><td>{{ proyecto.cliente }}</td></tr>
     <tr><td>Identificador del permiso</td><td>{{ proyecto.identificador }}</td></tr>
     <tr><td>Tipo de prueba</td><td>{{ proyecto.tipo_prueba }}</td></tr>
@@ -766,26 +831,27 @@ Cree el archivo `toolkit/templates/reporte.html`, pegue esta plantilla y guárde
     <tr><td>Huella de la autorización</td><td><code>{{ proyecto.huella }}</code></td></tr>
   </table>
 
-  <h2>2. Resumen</h2>
+  <h2>2. Resumen</h2> {# {% for %} repite lo de adentro por cada elemento; loop.last es verdadero en el último #}
   <p>{% for severidad, cantidad in resumen.items() %}{{ severidad }}: {{ cantidad }}{% if not loop.last %} | {% endif %}{% endfor %}</p>
+  <p>Severidades: CRITICAL (crítica), HIGH (alta), MEDIUM (media), LOW (baja), INFO (informativa).</p>
 
   <h2>3. Hallazgos</h2>
-  {% if hallazgos %}
+  {% if hallazgos %} {# {% if %}: si hay hallazgos, muestra la tabla; si no ({% else %}), un aviso #}
   <table>
     <tr><th>ID</th><th>Severidad</th><th>Módulo</th><th>Descripción</th><th>Evidencia</th><th>Recomendación</th></tr>
-    {% for h in hallazgos %}
+    {% for h in hallazgos %} {# una fila por cada hallazgo h #}
     <tr><td>{{ h.id }}</td><td class="{{ h.severidad }}">{{ h.severidad }}</td><td>{{ h.modulo }}</td>
         <td>{{ h.descripcion }}</td><td><code>{{ h.evidencia }}</code></td><td>{{ h.recomendacion }}</td></tr>
-    {% endfor %}
+    {% endfor %} {# fin de la repetición #}
   </table>
   {% else %}
   <p>Sin hallazgos: ejecute recon, scan o web antes de generar el reporte.</p>
-  {% endif %}
+  {% endif %} {# fin del si #}
 
   <h2>4. Registro de auditoría</h2>
   <table>
     <tr><th>Fecha</th><th>Nivel</th><th>Usuario</th><th>Acción</th><th>Objetivo</th><th>Resultado</th></tr>
-    {% for e in auditoria %}
+    {% for e in auditoria %} {# una fila por cada línea e de la minuta #}
     <tr><td>{{ e.fecha }}</td><td>{{ e.nivel }}</td><td>{{ e.usuario }}</td><td>{{ e.accion }}</td>
         <td>{{ e.objetivo }}</td><td>{{ e.resultado }}</td></tr>
     {% endfor %}
@@ -793,6 +859,8 @@ Cree el archivo `toolkit/templates/reporte.html`, pegue esta plantilla y guárde
 </body>
 </html>
 ```
+
+En la plantilla, lo que va entre `<style>` y `</style>` es CSS (Cascading Style Sheets, hojas de estilo): colores, letras y márgenes. `{% for %}` repite una fila por cada elemento, `{% if %}` muestra una parte solo si se cumple una condición y `{# ... #}` es un comentario que no aparece en el reporte.
 
 Ahora cree `toolkit/modules/report_generator.py`, pegue este código y guárdelo:
 
@@ -811,6 +879,12 @@ llenan con datos. Con autoescape=True, Jinja2 convierte < y > en &lt; y &gt;,
 así un banner con etiquetas HTML se MUESTRA como texto y no se ejecuta en el
 navegador de quien abra el reporte.
 
+Cómo leer la expresión regular de ofuscar():
+  \\b          borde de palabra: donde empieza o termina un número
+  \\d{1,3}     de 1 a 3 dígitos (un número de 0 a 999)
+  \\.          un punto literal
+  ( ... )     GRUPO: los tres primeros números de la IP, que se conservan como \\1
+
 Siglas: HTML (HyperText Markup Language, lenguaje de las páginas web).
 """
 import datetime
@@ -823,13 +897,13 @@ from toolkit.modules.audit_logger import leer_auditoria, leer_resultados
 from toolkit.modules.auth_manager import huella_autorizacion
 
 PLANTILLAS = Path(__file__).resolve().parents[1] / "templates"  # toolkit/templates/
-ORDEN = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]  # de más grave a menos grave
+ORDEN = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]  # crítica, alta, media, baja, informativa
 
 
 def ofuscar(texto: str) -> str:
     """Oculta datos sensibles: el último número de cada IP y el valor de las contraseñas."""
-    texto = re.sub(r"\b(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}\b", r"\1.***", texto)  # \1 = lo del grupo ( )
-    return re.sub(r"(password|passwd|pwd|clave)=\S+", r"\1=*****", texto, flags=re.IGNORECASE)
+    texto = re.sub(r"\b(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}\b", r"\1.***", texto)  # re.sub busca y reemplaza
+    return re.sub(r"(password|passwd|pwd|clave)=\S+", r"\1=*****", texto, flags=re.IGNORECASE)  # | = "o"
 
 
 def recopilar_hallazgos() -> list[dict]:
@@ -846,22 +920,22 @@ def recopilar_hallazgos() -> list[dict]:
 
     hallazgos = sorted(unicos.values(), key=gravedad)  # sorted ordena; key dice con qué criterio
     for numero, h in enumerate(hallazgos, start=1):  # enumerate numera: 1, 2, 3...
-        h["id"] = f"HALL-{numero:03d}"  # :03d rellena con ceros: HALL-001
+        h["id"] = f"HALL-{numero:03d}"  # :03d rellena con ceros a tres cifras: HALL-001
     return hallazgos
 
 
 def generar_reporte(auth: dict, formato: str, salida: Path) -> int:
     """Escribe el reporte y devuelve cuántos hallazgos incluyó."""
     hallazgos = recopilar_hallazgos()
-    auditoria = [{**e, "objetivo": ofuscar(e["objetivo"]), "resultado": ofuscar(e["resultado"])}
-                 for e in leer_auditoria()]
+    auditoria = [{**e, "objetivo": ofuscar(e["objetivo"]), "resultado": ofuscar(e["resultado"])}  # cada entrada e,
+                 for e in leer_auditoria()]  # copiada con el objetivo y el resultado ofuscados
     contexto = {
         "proyecto": {"cliente": auth["cliente"], "identificador": auth["identificador"],
                      "tipo_prueba": auth["tipo_prueba"],
                      "vigencia": f"{auth['fecha_inicio']} a {auth['fecha_fin']}",
                      "huella": huella_autorizacion(auth),
                      "generado": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
-        "resumen": {sev: sum(h["severidad"] == sev for h in hallazgos) for sev in ORDEN},
+        "resumen": {sev: sum(h["severidad"] == sev for h in hallazgos) for sev in ORDEN},  # suma True como 1
         "auditoria": auditoria,
         "hallazgos": hallazgos,
     }
@@ -889,6 +963,7 @@ def _markdown(ctx: dict) -> str:
               f"- Tipo de prueba: {p['tipo_prueba']}", f"- Vigencia: {p['vigencia']}",
               f"- Huella de la autorización: `{p['huella']}`", "", "## 2. Resumen", "",
               ", ".join(f"{sev}: {n}" for sev, n in ctx["resumen"].items()), "",
+              "Severidades: CRITICAL (crítica), HIGH (alta), MEDIUM (media), LOW (baja), INFO (informativa).", "",
               "## 3. Hallazgos", ""]
     if not ctx["hallazgos"]:
         lineas.append("Sin hallazgos: ejecute recon, scan o web antes de generar el reporte.")
@@ -898,7 +973,7 @@ def _markdown(ctx: dict) -> str:
         lineas += [f"| {h['id']} | {h['severidad']} | {h['modulo']} | {_celda(h['descripcion'])} | "
                    f"{_celda(h['evidencia'])} | {_celda(h['recomendacion'])} |" for h in ctx["hallazgos"]]
     lineas += ["", "## 4. Registro de auditoría", "", f"{len(ctx['auditoria'])} acción(es) registradas."]
-    return "\n".join(lineas) + "\n"
+    return "\n".join(lineas) + "\n"  # "\n" es el salto de línea: une las líneas una debajo de otra
 ```
 
 **Fíjese en:**
@@ -1055,7 +1130,7 @@ python3 -m pytest
 
 ```text
 ..................................                                       [100%]
-34 passed in 1.22s
+34 passed in 0.74s
 ```
 
 El tiempo depende de su equipo; lo que importa es `34 passed`.
@@ -1066,7 +1141,7 @@ El tiempo depende de su equipo; lo que importa es `34 passed`.
 python3 validar.py
 ```
 
-Comprueba su trabajo de punta a punta y sí puede fallar:
+Comprueba su trabajo de punta a punta y sí puede fallar. Cada línea dice `PASA` o `FALLA`:
 
 - **7.1** el permiso está vigente y la minuta registró `recon`, `scan`, `web`, `report` y al menos una negación.
 - **7.2** ningún resultado guardado apunta a un objetivo fuera del permiso.

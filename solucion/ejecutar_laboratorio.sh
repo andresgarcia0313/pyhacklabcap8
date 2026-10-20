@@ -78,7 +78,7 @@ debe_fallar python3 -m toolkit.cli --auth no_existe.json report --salida "$TOOLK
 titulo "Paso 7: validación"
 python3 validar.py "$TOOLKIT_DATOS/reporte_final.html"
 
-titulo "Paso 8: limpieza"
+titulo "Paso 9: limpieza"
 detener_simulador
 pgrep -af '^python[0-9.]* (\./)?simulador_servicios\.py' || echo "Sin procesos del laboratorio activos"
 echo; echo "LABORATORIO COMPLETADO"

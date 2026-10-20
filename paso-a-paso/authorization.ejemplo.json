@@ -6,5 +6,5 @@
   "fecha_inicio": "AAAA-MM-DD",
   "fecha_fin": "AAAA-MM-DD",
   "tipo_prueba": "caja_gris",
-  "notas": "Ejecute python3 preparar_autorizacion.py: crea authorization.json con fechas vigentes desde hoy."
+  "notas": "caja_gris: quien prueba conoce parte del sistema (caja negra: nada; caja blanca: todo). Ejecute python3 preparar_autorizacion.py para dejar las fechas vigentes desde hoy."
 }

@@ -11,6 +11,12 @@ llenan con datos. Con autoescape=True, Jinja2 convierte < y > en &lt; y &gt;,
 así un banner con etiquetas HTML se MUESTRA como texto y no se ejecuta en el
 navegador de quien abra el reporte.
 
+Cómo leer la expresión regular de ofuscar():
+  \\b          borde de palabra: donde empieza o termina un número
+  \\d{1,3}     de 1 a 3 dígitos (un número de 0 a 999)
+  \\.          un punto literal
+  ( ... )     GRUPO: los tres primeros números de la IP, que se conservan como \\1
+
 Siglas: HTML (HyperText Markup Language, lenguaje de las páginas web).
 """
 import datetime
@@ -23,13 +29,13 @@ from toolkit.modules.audit_logger import leer_auditoria, leer_resultados
 from toolkit.modules.auth_manager import huella_autorizacion
 
 PLANTILLAS = Path(__file__).resolve().parents[1] / "templates"  # toolkit/templates/
-ORDEN = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]  # de más grave a menos grave
+ORDEN = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]  # crítica, alta, media, baja, informativa
 
 
 def ofuscar(texto: str) -> str:
     """Oculta datos sensibles: el último número de cada IP y el valor de las contraseñas."""
-    texto = re.sub(r"\b(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}\b", r"\1.***", texto)  # \1 = lo del grupo ( )
-    return re.sub(r"(password|passwd|pwd|clave)=\S+", r"\1=*****", texto, flags=re.IGNORECASE)
+    texto = re.sub(r"\b(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}\b", r"\1.***", texto)  # re.sub busca y reemplaza
+    return re.sub(r"(password|passwd|pwd|clave)=\S+", r"\1=*****", texto, flags=re.IGNORECASE)  # | = "o"
 
 
 def recopilar_hallazgos() -> list[dict]:
@@ -46,22 +52,22 @@ def recopilar_hallazgos() -> list[dict]:
 
     hallazgos = sorted(unicos.values(), key=gravedad)  # sorted ordena; key dice con qué criterio
     for numero, h in enumerate(hallazgos, start=1):  # enumerate numera: 1, 2, 3...
-        h["id"] = f"HALL-{numero:03d}"  # :03d rellena con ceros: HALL-001
+        h["id"] = f"HALL-{numero:03d}"  # :03d rellena con ceros a tres cifras: HALL-001
     return hallazgos
 
 
 def generar_reporte(auth: dict, formato: str, salida: Path) -> int:
     """Escribe el reporte y devuelve cuántos hallazgos incluyó."""
     hallazgos = recopilar_hallazgos()
-    auditoria = [{**e, "objetivo": ofuscar(e["objetivo"]), "resultado": ofuscar(e["resultado"])}
-                 for e in leer_auditoria()]
+    auditoria = [{**e, "objetivo": ofuscar(e["objetivo"]), "resultado": ofuscar(e["resultado"])}  # cada entrada e,
+                 for e in leer_auditoria()]  # copiada con el objetivo y el resultado ofuscados
     contexto = {
         "proyecto": {"cliente": auth["cliente"], "identificador": auth["identificador"],
                      "tipo_prueba": auth["tipo_prueba"],
                      "vigencia": f"{auth['fecha_inicio']} a {auth['fecha_fin']}",
                      "huella": huella_autorizacion(auth),
                      "generado": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
-        "resumen": {sev: sum(h["severidad"] == sev for h in hallazgos) for sev in ORDEN},
+        "resumen": {sev: sum(h["severidad"] == sev for h in hallazgos) for sev in ORDEN},  # suma True como 1
         "auditoria": auditoria,
         "hallazgos": hallazgos,
     }
@@ -89,6 +95,7 @@ def _markdown(ctx: dict) -> str:
               f"- Tipo de prueba: {p['tipo_prueba']}", f"- Vigencia: {p['vigencia']}",
               f"- Huella de la autorización: `{p['huella']}`", "", "## 2. Resumen", "",
               ", ".join(f"{sev}: {n}" for sev, n in ctx["resumen"].items()), "",
+              "Severidades: CRITICAL (crítica), HIGH (alta), MEDIUM (media), LOW (baja), INFO (informativa).", "",
               "## 3. Hallazgos", ""]
     if not ctx["hallazgos"]:
         lineas.append("Sin hallazgos: ejecute recon, scan o web antes de generar el reporte.")
@@ -98,4 +105,4 @@ def _markdown(ctx: dict) -> str:
         lineas += [f"| {h['id']} | {h['severidad']} | {h['modulo']} | {_celda(h['descripcion'])} | "
                    f"{_celda(h['evidencia'])} | {_celda(h['recomendacion'])} |" for h in ctx["hallazgos"]]
     lineas += ["", "## 4. Registro de auditoría", "", f"{len(ctx['auditoria'])} acción(es) registradas."]
-    return "\n".join(lineas) + "\n"
+    return "\n".join(lineas) + "\n"  # "\n" es el salto de línea: une las líneas una debajo de otra

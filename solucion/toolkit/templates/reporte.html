@@ -3,24 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <title>Reporte de pruebas de seguridad autorizadas</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 980px; margin: 40px auto; color: #222; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    th { background: #1a1a2e; color: #fff; padding: 8px; text-align: left; }
-    td { padding: 6px 8px; border-bottom: 1px solid #ddd; vertical-align: top; }
-    .aviso { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 14px; }
-    .HIGH, .CRITICAL { color: #b00020; font-weight: bold; }
-    .MEDIUM { color: #b36b00; font-weight: bold; }
+  <style> /* CSS (Cascading Style Sheets, hojas de estilo): colores, letras y márgenes de la página */
+    body { font-family: Arial, sans-serif; max-width: 980px; margin: 40px auto; color: #222; } /* página centrada */
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; } /* tablas a todo el ancho */
+    th { background: #1a1a2e; color: #fff; padding: 8px; text-align: left; } /* títulos: fondo oscuro, letra blanca */
+    td { padding: 6px 8px; border-bottom: 1px solid #ddd; vertical-align: top; } /* celdas con línea gris abajo */
+    .aviso { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 14px; } /* recuadro amarillo */
+    .HIGH, .CRITICAL { color: #b00020; font-weight: bold; } /* severidad alta o crítica: rojo y negrita */
+    .MEDIUM { color: #b36b00; font-weight: bold; } /* severidad media: naranja y negrita */
   </style>
 </head>
 <body>
-  {# Esto es un comentario de Jinja2: no aparece en el reporte. {{ x }} se reemplaza por el valor de x. #}
+  {# Comentario de Jinja2: no aparece en el reporte. {{ x }} se reemplaza por el valor de x. #}
   <h1>Reporte de pruebas de seguridad autorizadas</h1>
   <p class="aviso">Confidencial. Generado el {{ proyecto.generado }}. Solo para el cliente autorizado.</p>
 
   <h2>1. Proyecto</h2>
   <table>
-    <tr><th>Campo</th><th>Valor</th></tr>
+    <tr><th>Campo</th><th>Valor</th></tr> {# <tr> es una fila; <th>, una celda de título; <td>, una celda normal #}
     <tr><td>Cliente</td><td>{{ proyecto.cliente }}</td></tr>
     <tr><td>Identificador del permiso</td><td>{{ proyecto.identificador }}</td></tr>
     <tr><td>Tipo de prueba</td><td>{{ proyecto.tipo_prueba }}</td></tr>
@@ -28,26 +28,27 @@
     <tr><td>Huella de la autorización</td><td><code>{{ proyecto.huella }}</code></td></tr>
   </table>
 
-  <h2>2. Resumen</h2>
+  <h2>2. Resumen</h2> {# {% for %} repite lo de adentro por cada elemento; loop.last es verdadero en el último #}
   <p>{% for severidad, cantidad in resumen.items() %}{{ severidad }}: {{ cantidad }}{% if not loop.last %} | {% endif %}{% endfor %}</p>
+  <p>Severidades: CRITICAL (crítica), HIGH (alta), MEDIUM (media), LOW (baja), INFO (informativa).</p>
 
   <h2>3. Hallazgos</h2>
-  {% if hallazgos %}
+  {% if hallazgos %} {# {% if %}: si hay hallazgos, muestra la tabla; si no ({% else %}), un aviso #}
   <table>
     <tr><th>ID</th><th>Severidad</th><th>Módulo</th><th>Descripción</th><th>Evidencia</th><th>Recomendación</th></tr>
-    {% for h in hallazgos %}
+    {% for h in hallazgos %} {# una fila por cada hallazgo h #}
     <tr><td>{{ h.id }}</td><td class="{{ h.severidad }}">{{ h.severidad }}</td><td>{{ h.modulo }}</td>
         <td>{{ h.descripcion }}</td><td><code>{{ h.evidencia }}</code></td><td>{{ h.recomendacion }}</td></tr>
-    {% endfor %}
+    {% endfor %} {# fin de la repetición #}
   </table>
   {% else %}
   <p>Sin hallazgos: ejecute recon, scan o web antes de generar el reporte.</p>
-  {% endif %}
+  {% endif %} {# fin del si #}
 
   <h2>4. Registro de auditoría</h2>
   <table>
     <tr><th>Fecha</th><th>Nivel</th><th>Usuario</th><th>Acción</th><th>Objetivo</th><th>Resultado</th></tr>
-    {% for e in auditoria %}
+    {% for e in auditoria %} {# una fila por cada línea e de la minuta #}
     <tr><td>{{ e.fecha }}</td><td>{{ e.nivel }}</td><td>{{ e.usuario }}</td><td>{{ e.accion }}</td>
         <td>{{ e.objetivo }}</td><td>{{ e.resultado }}</td></tr>
     {% endfor %}
