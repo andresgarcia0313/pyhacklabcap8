@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte de pruebas de seguridad autorizadas</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 980px; margin: 40px auto; color: #222; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th { background: #1a1a2e; color: #fff; padding: 8px; text-align: left; }
+    td { padding: 6px 8px; border-bottom: 1px solid #ddd; vertical-align: top; }
+    .aviso { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 14px; }
+    .HIGH, .CRITICAL { color: #b00020; font-weight: bold; }
+    .MEDIUM { color: #b36b00; font-weight: bold; }
+  </style>
+</head>
+<body>
+  {# Esto es un comentario de Jinja2: no aparece en el reporte. {{ x }} se reemplaza por el valor de x. #}
+  <h1>Reporte de pruebas de seguridad autorizadas</h1>
+  <p class="aviso">Confidencial. Generado el {{ proyecto.generado }}. Solo para el cliente autorizado.</p>
+
+  <h2>1. Proyecto</h2>
+  <table>
+    <tr><th>Campo</th><th>Valor</th></tr>
+    <tr><td>Cliente</td><td>{{ proyecto.cliente }}</td></tr>
+    <tr><td>Identificador del permiso</td><td>{{ proyecto.identificador }}</td></tr>
+    <tr><td>Tipo de prueba</td><td>{{ proyecto.tipo_prueba }}</td></tr>
+    <tr><td>Vigencia</td><td>{{ proyecto.vigencia }}</td></tr>
+    <tr><td>Huella de la autorización</td><td><code>{{ proyecto.huella }}</code></td></tr>
+  </table>
+
+  <h2>2. Resumen</h2>
+  <p>{% for severidad, cantidad in resumen.items() %}{{ severidad }}: {{ cantidad }}{% if not loop.last %} | {% endif %}{% endfor %}</p>
+
+  <h2>3. Hallazgos</h2>
+  {% if hallazgos %}
+  <table>
+    <tr><th>ID</th><th>Severidad</th><th>Módulo</th><th>Descripción</th><th>Evidencia</th><th>Recomendación</th></tr>
+    {% for h in hallazgos %}
+    <tr><td>{{ h.id }}</td><td class="{{ h.severidad }}">{{ h.severidad }}</td><td>{{ h.modulo }}</td>
+        <td>{{ h.descripcion }}</td><td><code>{{ h.evidencia }}</code></td><td>{{ h.recomendacion }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>Sin hallazgos: ejecute recon, scan o web antes de generar el reporte.</p>
+  {% endif %}
+
+  <h2>4. Registro de auditoría</h2>
+  <table>
+    <tr><th>Fecha</th><th>Nivel</th><th>Usuario</th><th>Acción</th><th>Objetivo</th><th>Resultado</th></tr>
+    {% for e in auditoria %}
+    <tr><td>{{ e.fecha }}</td><td>{{ e.nivel }}</td><td>{{ e.usuario }}</td><td>{{ e.accion }}</td>
+        <td>{{ e.objetivo }}</td><td>{{ e.resultado }}</td></tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

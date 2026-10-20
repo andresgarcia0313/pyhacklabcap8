@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+output/
+datos/
+datos_comprobacion/
+authorization.json
+reporte_final.*

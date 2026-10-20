@@ -1,0 +1,6 @@
+{
+  "executionEnvironments": [
+    {"root": "solucion"},
+    {"root": "paso-a-paso"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "cliente": "Laboratorio local del curso",
+  "contacto_autorizado": "Instructor del curso",
+  "identificador": "PERMISO-LAB08-001",
+  "activos_autorizados": ["127.0.0.1", "localhost"],
+  "fecha_inicio": "AAAA-MM-DD",
+  "fecha_fin": "AAAA-MM-DD",
+  "tipo_prueba": "caja_gris",
+  "notas": "Ejecute python3 preparar_autorizacion.py: crea authorization.json con fechas vigentes desde hoy."
+}
